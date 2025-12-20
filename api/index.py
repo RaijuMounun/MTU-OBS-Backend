@@ -4,9 +4,9 @@ import requests
 from bs4 import BeautifulSoup
 import re
 import base64
+import io
 
 # --- YARDIMCI VERI MODELLERI (Basit Dict Yapısı) ---
-# Harici dosya bağımlılığını kaldırdık, Vercel tek dosyada çalışsın.
 
 class OBSClient:
     # --- URL SABİTLERİ ---
@@ -42,35 +42,43 @@ class OBSClient:
 
     def fetch_login_page(self):
         """
-        Adım 1: Login sayfasını açar, Captcha'yı base64 yapar ve
-        gerekli hidden inputları (ViewState) döner.
+        Adım 1: Login sayfasını açar, Captcha'yı RAM'de base64 yapar.
         """
         r = self.session.get(self.LOGIN_URL)
         soup = BeautifulSoup(r.content, "html.parser")
 
-        # 1. Captcha Bul ve Base64'e çevir (Diske yazmak yok!)
+        # 1. Captcha Bul
         captcha_b64 = None
         img_tag = soup.find(id="imgCaptchaImg")
+        
         if img_tag:
             src = img_tag.get("src")
-            # URL düzeltme
+            # URL düzeltme mantığın (Senin çalışan kodundan)
             if not src.startswith("http"):
                 url = self.BASE_URL + src.lstrip("/") if src.startswith("/") else self.BASE_URL + src
             else:
                 url = src
             
-            # Resmi indir
-            r_img = self.session.get(url)
-            if r_img.status_code == 200:
-                captcha_b64 = base64.b64encode(r_img.content).decode('utf-8')
+            try:
+                # Resmi İndir (Stream kullanmadan direkt content alalım, küçük resim zaten)
+                r_img = self.session.get(url)
+                
+                if r_img.status_code == 200:
+                    # Diske yazmak yerine direkt bellekte Base64'e çevir
+                    captcha_b64 = base64.b64encode(r_img.content).decode('utf-8')
+                else:
+                    print(f"Resim indirilemedi: {r_img.status_code}") # Loglara düşsün
 
-        # 2. Hidden Inputları al (ViewState çok önemli)
+            except Exception as e:
+                print(f"Captcha işleme hatası: {str(e)}")
+
+        # 2. Hidden Inputları al
         hidden_inputs = self._get_hidden_inputs(soup)
 
         return {
-            "captcha_image": captcha_b64, # Ekranda göstermek için
-            "view_state_data": hidden_inputs, # Post ederken lazım olacak
-            "cookies": self.get_cookies() # Session ID
+            "captcha_image": captcha_b64,
+            "view_state_data": hidden_inputs,
+            "cookies": self.get_cookies()
         }
 
     def attempt_login(self, username, password, captcha_code, view_state_data):
