@@ -40,7 +40,7 @@ class OBSClient:
                 data[inp.get("name")] = inp.get("value", "")
         return data
 
-    def fetch_login_page(self):
+    def fetch_login_page(self): 
         """
         Adım 1: Login sayfasını açar, Captcha'yı RAM'de base64 yapar.
         """
