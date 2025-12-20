@@ -223,6 +223,16 @@ class handler(BaseHTTPRequestHandler):
 
         except Exception as e:
             self._send_response(500, {"status": "error", "message": str(e)})
+    
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header('Content-type', 'application/json')
+        self.end_headers()
+        message = {
+            "status": "running", 
+            "message": "API calisiyor! Ancak islem yapmak icin POST istegi atmalisin."
+        }
+        self.wfile.write(json.dumps(message).encode('utf-8'))
 
     def _send_response(self, code, data):
         self.send_response(code)
